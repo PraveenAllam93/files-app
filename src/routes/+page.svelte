@@ -43,6 +43,60 @@
             uploadResults.push(`${file.name}: ready to upload`)
         }
     }
+
+    async function uploadFiles() {
+        if (selectedFiles.length === 0) {
+            uploadResults.push("No files selected for upload.");
+            return;
+        }
+
+        const payload = {
+            userid: "user_23y489ruhsbdfjbsof",
+            files: selectedFiles.map(file => ({
+                filename: file.name,
+                content_type: file.type,
+            }))
+        };
+
+        const response = await fetch('http://localhost:8000/file/put_presigned_url', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            uploadResults.push("Failed to get presigned URLs for upload.");
+            return;
+        }
+
+        const data = await response.json();
+        const urls: string[] = data.urls;
+
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+            const url = urls[i];
+
+            try {
+                const uploadResponse = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': file.type,
+                    },
+                    body: file,
+                });
+
+                if (uploadResponse.ok) {
+                    uploadResults[i] = `${file.name}: uploaded successfully.`;
+                } else {
+                    uploadResults[i] = `${file.name}: failed to upload.`;
+                }
+            } catch (error) {
+                uploadResults[i] = `${file.name}: error during upload.`;
+            }
+        }
+    }
 </script>
 
 <div class="p-6">
@@ -56,7 +110,13 @@
 		class="mb-4 block"
 	/>
 
-    <ul class="list-disc pl-4">
+    <button
+        on:click={uploadFiles}
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        Upload Selected Files
+    </button>
+
+    <ul class="list-disc pl-4 mt-4">
 		{#each uploadResults as result}
 			<li>{result}</li>
 		{/each}
