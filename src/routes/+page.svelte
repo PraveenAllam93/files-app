@@ -73,6 +73,7 @@
 
         const data = await response.json();
         const urls: string[] = data.urls;
+        const object_paths: string[] = data.object_paths;
 
         for (let i = 0; i < selectedFiles.length; i++) {
             const file = selectedFiles[i];
@@ -88,13 +89,49 @@
                 });
 
                 if (uploadResponse.ok) {
-                    uploadResults[i] = `${file.name}: uploaded successfully.`;
+                    uploadResults[i] = `${file.name}: uploaded successfully at ${object_paths[i]}`;
                 } else {
                     uploadResults[i] = `${file.name}: failed to upload.`;
                 }
             } catch (error) {
                 uploadResults[i] = `${file.name}: error during upload.`;
             }
+        }
+
+        await ingest_event(object_paths);
+    }
+
+    
+    async function ingest_event(object_paths: string[]) {
+        if (uploadResults.length === 0) {
+            uploadResults.push("No files uploaded yet.");
+            return;
+        }
+
+        const payload = {
+            userid: "user_23y489ruhsbdfjbsof",
+            files: selectedFiles.map((file, i) => ({
+                filename: file.name,
+                content_type: file.type,
+                storage_path: object_paths[i]
+            }))
+        };
+
+        try {
+            const response = await fetch("http://localhost:8000/file/ingest_event", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                uploadResults.push("Files ingested successfully.");
+            } else {
+                uploadResults.push("Failed to ingest files.");
+            }
+        } catch (error) {
+            uploadResults.push("Error during ingestion.");
+            console.error(error);
         }
     }
 </script>
